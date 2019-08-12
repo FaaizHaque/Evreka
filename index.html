@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <link rel="stylesheet" href="http://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css"
+  integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ=="
+  crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js"
+ integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og=="crossorigin=""></script>
+
+<script src="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.9/jquery-ui.js" type="text/javascript"></script>
+<link href="http://ajax.aspnetcdn.com/ajax/jquery.ui/1.8.9/themes/blitzer/jquery-ui.css"
+rel="stylesheet" type="text/css" />
+    <style>
+      {
+        display: flex;
+        position: absolute;
+      }
+      .custom-cm {
+        background-color: #ffffff;
+        border: 1px solid #cccccc;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100px;
+        display: none;
+        z-index: 1;
+      }
+
+      .custom-cm_item{
+        cursor: pointer;
+      }
+      .custom-cm_item:hover{
+        background-color: #f8f8f8;
+      }
+
+      {box-sizing: border-box;}
+
+
+      /* The popup form - hidden by default */
+      .form-popup {
+        display: none;
+        position: absolute;
+        border: 3px solid #f1f1f1;
+        right: 50%;
+        text-align: center;
+        z-index: 9;
+      }
+
+      /* Add styles to the form container */
+      .form-container {
+        max-width: 1000px;
+        padding: 10px;
+        background-color: black;
+        display: inline-block;
+        right: 50%;
+      }
+
+      titleLabel{
+        font-size:30px;
+      }
+      vehicleLabel{
+        font-size:15px;
+      }
+
+      .topright {
+        position: absolute;
+        top: 8px;
+        right: 16px;
+      }
+
+      /* The Modal (background) */
+      .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+      }
+
+      /* Modal Content/Box */
+      .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto; /* 15% from the top and centered */
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%; /* Could be more or less, depending on screen size */
+      }
+
+      /* The Close Button */
+      .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+      }
+
+      .close:hover,
+      .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      #mapid {
+        height: 180px;
+      }
+    </style>
+
+<!--HTML-->
+
+
+    <!--Context Menu Information-->
+    <div class="custom-cm" id="log" >
+      <div class="custom-cm_item" id="l1">Change</div>
+      <div class="customer-cm_divider"></div>
+      <div class="custom-cm_item" id="l2">Swap</div>
+    </div>
+
+
+
+    <div id="mapid"></div>
+
+
+    <!-- The Modal -->
+    <div id="myModal" class="modal">
+      <!-- Modal content -->
+      <div id="first" class="modal-content">
+        <span class="close">&times;</span>
+        <span class="test">
+      </div>
+    </div>
+
+    <!-- The Modal -->
+    <div id="myModal2" class="modal">
+      <!-- Modal content -->
+      <div id="first2" class="modal-content">
+        <span class="close">&times;</span>
+        <span class="test">
+      </div>
+    </div>
+
+
+    <script>
+      const cm = document.querySelector('.custom-cm');
+      function showContextMenu(show = true){
+        cm.style.display = show ? 'block' : 'none';
+      }
+      $(document).ready(function() {
+          ///Adds search boxes to the table
+           $('#myTable thead tr').clone(true).appendTo( '#myTable thead' );
+           $('#myTable thead tr:eq(1) th').each( function (i) {
+               var title = $(this).text();
+               $(this).html( '<input type="text" placeholder="Search " />' );
+
+               $( 'input', this ).on( 'keyup change', function () {
+                   if ( table.column(i).search() !== this.value ) {
+                       table
+                           .column(i)
+                           .search( this.value )
+                           .draw();
+                   }
+               } );
+           } );
+
+           var table = $('#myTable').DataTable( {
+               orderCellsTop: true,
+               fixedHeader: true
+           } );
+
+
+            $('#myTable').on('click', 'td:nth-child(2)', onClickMe);
+
+            function onClickMe(e){
+              //User clicked on a vehicle and the contextmenu is displayed
+              var table = $('#myTable').DataTable();
+
+              e.preventDefault();
+              showContextMenu();
+              cm.style.top = e.clientY +"px";
+              cm.style.left = e.clientX + "px";
+
+
+              var row = (table.row( $(this).parents('tr') ).data() );
+              var column = (table.column(1).data() );
+              var vehicle = row[1];
+              var name = row[0];
+              var driver = row[3];
+
+
+
+
+
+              // Get the modal
+              var modal = document.getElementById("myModal");
+              // Get the <span> element that closes the modal
+              var span = document.getElementsByClassName("close")[0];
+
+              // When the user clicks on <span> (x), close the modal
+              span.onclick = function() {
+                modal.style.display = "none";
+              }
+
+              // When the user clicks anywhere outside of the modal, close it
+              window.onclick = function(event) {
+                if (event.target == modal) {
+                  modal.style.display = "none";
+                }
+              }
+              //Checks which menu option the user selected
+              $('body').click(function(event) {
+                  if($(event.target).is('#l1')) {
+                    modal.style.display = "block";
+                    //USER CLICKED CHANGE FROM CONTEXTMENU
+                    document.getElementById('first').innerHTML = "<titleLabel>" +  vehicle + " - " + name + " - " + driver + "<br><br>" + "Change Vehicle" + "</titleLabel>" +"<br><br>---------------------<br><br>" + "<vehicleLabel>" + column[0] + "<br>" + column[1]  + "<br>" + column[2] + "<br>" + column[3]  + "<br>" + column[4]  + "<br>"+ column[5] + "<br>" + column[6] + "<vehicleLabel>";
+                  }
+              });
+            }
+
+
+
+            function openForm() {
+              document.getElementById("myForm").style.display = "block";
+            }
+
+            function closeForm() {
+              document.getElementById("myForm").style.display = "none";
+            }
+
+    });
+
+    function hasMap( id ) {
+      return !! document.getElementById(id);
+    }
+
+
+    var isMapInit = false;
+
+
+    function openMap(){
+
+      if ( isMapInit == false )
+      {
+
+            var mymap = L.map('mapid').setView([51.505, -0.09], 6);
+            mymap.invalidateSize();
+            const attribution = '$copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+            const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            const tiles = L.tileLayer(tileUrl , {attribution});
+            tiles.addTo(mymap);
+
+            var truckIcon = L.icon({
+              iconUrl: 'https://static.thenounproject.com/png/471-200.png',
+              iconSize:     [38, 95]
+            })
+            L.marker([51.505,-0.09], {icon:truckIcon}).addTo(mymap);
+            L.marker([53.958332, -1.080278]).addTo(mymap);
+            L.marker([52.192001, -2.220000], {icon:truckIcon}).addTo(mymap);
+            L.marker([53.680000, -1.490000]).addTo(mymap);
+            L.marker([51.209000, -2.647000]).addTo(mymap);
+            L.marker([51.063202, -1.308000]).addTo(mymap);
+            L.marker([53.680000, -1.490000], {icon:truckIcon}).addTo(mymap);
+            L.marker([50.259998, -5.051000], {icon:truckIcon}).addTo(mymap);
+            L.marker([54.906101, -1.381130]).addTo(mymap);
+            L.marker([53.383331, -1.466667]).addTo(mymap);
+            L.marker([53.483002, -2.293100]).addTo(mymap);
+            L.marker([51.882000, -5.269000], {icon:truckIcon}).addTo(mymap);
+            isMapInit = true;
+        }
+
+    }
+
+
+
+    </script>
+
+
+
+
+
+
+    <div class="topright">
+      <img src="https://cdn1.iconfinder.com/data/icons/ui-colored-1/100/UI__2-512.png" width="100" height="100" ></img>
+    </div>
+    <img src="https://cdn.pixabay.com/photo/2016/03/22/04/23/map-1272165_960_720.png" width="30" height="30" onclick="openMap()"></img>
+    <input type="date"></input>
+    <img src="https://cdn4.iconfinder.com/data/icons/arrow-68/48/80-512.png" width="30" height="30"></img>
+    <br>
+
+
+
+    <h1>Routes</h1>
+    <img src="http://icons.iconarchive.com/icons/papirus-team/papirus-mimetypes/256/x-office-document-icon.png" width="20" height="15">Create Report</img>
+    <br><br><br>
+
+<!---DUMMY DATA FOR DATATABLE-->
+    <table id="myTable" class="display" style="width:100%" position="absolute">
+   <thead>
+      <tr>
+         <th>Name</th>
+         <th>Vehicle</th>
+         <th>Time</th>
+         <th>Driver</th>
+         <th>Helper</th>
+         <th>Performance</th>
+         <th>Status</th>
+      </tr>
+   </thead>
+   <tbody>
+      <tr>
+         <td>13:30 Vardiyasi</td>
+         <td>Fenertepe</td>
+         <td>13:12</td>
+         <td>Tanir Nalbant</td>
+         <td>-</td>
+         <td>66/103</td>
+         <td>Dispatched</td>
+      </tr>
+      <tr>
+         <td>13:30 Vardiyasi</td>
+         <td>Bogazkoy</td>
+         <td>13:11</td>
+         <td>Selcuk Yurt</td>
+         <td>-</td>
+         <td>58/85</td>
+         <td>Finished</td>
+      </tr>
+      <tr>
+         <td>7:30 Vardiyasi</td>
+         <td>Basaksehir</td>
+         <td>7:30</td>
+         <td>Emri Akca</td>
+         <td>-</td>
+         <td>108/148</td>
+         <td>Finished</td>
+      </tr>
+      <tr>
+         <td>7:30 Vardiyasi</td>
+         <td>4. 5. Etap</td>
+         <td>7:30</td>
+         <td>Yasar Demir</td>
+         <td>-</td>
+         <td>121/138</td>
+         <td>Finished</td>
+      </tr>
+      <tr>
+         <td>7:30 Vardiyasi</td>
+         <td>Kayasehir</td>
+         <td>7:30</td>
+         <td>Omer Osman Ekiz</td>
+         <td>-</td>
+         <td>97/146</td>
+         <td>Finished</td>
+      </tr>
+      <tr>
+         <td>7:30 Vardiyasi</td>
+         <td>Bahcesehir</td>
+         <td>7:30</td>
+         <td>Murat Ucanoglu</td>
+         <td>-</td>
+         <td>55/107</td>
+         <td>Finished</td>
+      </tr>
+      <tr>
+         <td>7:30 Vardiyasi</td>
+         <td>Bsk.&Aga</td>
+         <td>7:30</td>
+         <td>Mahmut Mercan</td>
+         <td>-</td>
+         <td>52/98</td>
+         <td>Finished</td>
+      </tr>
+   </tbody>
+   <tfoot>
+      <tr>
+        <th>Name</th>
+        <th>Vehicle</th>
+        <th>Time</th>
+        <th>Driver</th>
+        <th>Helper</th>
+        <th>Performance</th>
+        <th>Status</th>
+      </tr>
+   </tfoot>
+</table>
+</html>
